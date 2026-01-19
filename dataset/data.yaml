@@ -1,0 +1,15 @@
+names:
+- 轴承
+- 法兰
+- 螺栓
+- 齿轮
+- 支架
+- 连接件
+- 套筒
+- 夹具
+- 底座
+- 轴套
+nc: 10
+path: ./dataset
+train: images/train
+val: images/train
