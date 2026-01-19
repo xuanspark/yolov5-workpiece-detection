@@ -1,0 +1,74 @@
+name: YOLOv5 Training
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'dataset/**'
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+        pip install opencv-python-headless
+        git clone https://github.com/ultralytics/yolov5
+        cd yolov5
+        pip install -r requirements.txt
+    
+    - name: Prepare dataset
+      run: |
+        mkdir -p yolov5/dataset
+        cp -r dataset/* yolov5/dataset/
+        echo "Images:"
+        ls -la yolov5/dataset/images/train | head -10
+        echo "Labels:"
+        ls -la yolov5/dataset/labels/train | head -10
+    
+    - name: Train YOLOv5
+      run: |
+        cd yolov5
+        python train.py \
+          --img 640 \
+          --batch 8 \
+          --epochs 50 \
+          --data dataset/data.yaml \
+          --weights yolov5s.pt \
+          --cache \
+          --project runs/train \
+          --name workpiece_detection \
+          --patience 10
+    
+    - name: Upload results
+      uses: actions/upload-artifact@v3
+      with:
+        name: training-results
+        path: |
+          yolov5/runs/train/workpiece_detection/weights/best.pt
+          yolov5/runs/train/workpiece_detection/weights/last.pt
+          yolov5/runs/train/workpiece_detection/results.png
+          yolov5/runs/train/workpiece_detection/confusion_matrix.png
+    
+    - name: Create release
+      if: success()
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v1.0-${{ github.run_number }}
+        name: Training Run ${{ github.run_number }}
+        files: |
+          yolov5/runs/train/workpiece_detection/weights/best.pt
+          yolov5/runs/train/workpiece_detection/results.png
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
